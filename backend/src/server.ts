@@ -1,14 +1,5 @@
 import path from "path";
 import dotenv from "dotenv";
-
-// В production (Docker) .env не використовується — змінні передаються через docker-compose env
-// В dev режимі .env знаходиться на рівень вище від dist/ або src/
-const envPath = process.env.NODE_ENV === "production"
-  ? undefined
-  : path.resolve(__dirname, "../.env");
-
-dotenv.config({ path: envPath, override: true });
-
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -18,10 +9,14 @@ import { authRoutes } from "./routes/auth";
 import { requireAuth } from "./middleware/requireAuth";
 import prisma from "./prisma";
 
+// In production env vars come from Docker. In dev — load from .env file
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+}
+
 const app = express();
 const PORT = process.env.PORT || 4000;
-
-const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
+const allowedOrigin = process.env.FRONTEND_URL || "https://ads.vkoctak.tech";
 
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 app.use(express.json());

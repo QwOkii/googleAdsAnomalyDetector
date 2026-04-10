@@ -30,7 +30,7 @@ export function LoginPage() {
                 <Text as="p" variant="bodyMd" tone="subdued">
                   Sign in with Google to analyze your campaigns for anomalies.
                 </Text>
-                <Button variant="primary" url="http://localhost:4000/auth/google">
+                <Button variant="primary" url="https://ads-api.vkoctak.tech/auth/google">
                   Connect Google Ads
                 </Button>
               </BlockStack>

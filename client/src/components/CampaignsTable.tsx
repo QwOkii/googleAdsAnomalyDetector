@@ -36,7 +36,6 @@ export function CampaignsTable({ campaigns, loading }: Props) {
       columnContentTypes={["text", "text", "numeric", "numeric", "numeric", "numeric", "numeric"]}
       headings={["Campaign", "Status", "Cost", "Clicks", "Conversions", "CTR", "CPC"]}
       rows={rows}
-      loading={loading}
     />
   );
 }

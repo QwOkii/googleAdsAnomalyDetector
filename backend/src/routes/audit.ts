@@ -1,19 +1,19 @@
 import { Router } from "express";
+import type { Campaign } from "@prisma/client";
 import prisma from "../prisma";
 import { fetchCampaigns } from "../services/googleAds";
 import { detectAnomalies } from "../services/anomalyDetector";
 
 export const auditRoutes = Router();
 
-// POST /api/audit — запускає AI аудит, зберігає аномалії, повертає результат
 auditRoutes.post("/", async (_req, res) => {
   if (!process.env.GEMINI_API_KEY) {
     return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
   }
 
   try {
-    // 1. Переконатись що є кампанії в БД
-    let campaigns = await prisma.campaign.findMany();
+    let campaigns: Campaign[] = await prisma.campaign.findMany();
+
     if (campaigns.length === 0) {
       const raw = await fetchCampaigns();
       campaigns = await Promise.all(
@@ -33,8 +33,7 @@ auditRoutes.post("/", async (_req, res) => {
       );
     }
 
-    // 2. Один виклик до AI з усіма кампаніями одразу
-    const campaignPayload = campaigns.map((c) => ({
+    const campaignPayload = campaigns.map((c: Campaign) => ({
       name: c.name,
       status: c.status,
       cost: c.cost,
@@ -46,12 +45,11 @@ auditRoutes.post("/", async (_req, res) => {
 
     const anomalies = await detectAnomalies(campaignPayload);
 
-    // 3. Очистити старі аномалії і зберегти нові
     await prisma.anomaly.deleteMany();
 
     const saved = await Promise.all(
       anomalies.map(async (a) => {
-        const campaign = campaigns.find((c) => c.name === a.campaignName);
+        const campaign = campaigns.find((c: Campaign) => c.name === a.campaignName);
         if (!campaign) return null;
 
         return prisma.anomaly.create({
@@ -77,7 +75,6 @@ auditRoutes.post("/", async (_req, res) => {
   }
 });
 
-// GET /api/audit — повернути збережені аномалії з кампаніями
 auditRoutes.get("/", async (_req, res) => {
   try {
     const anomalies = await prisma.anomaly.findMany({

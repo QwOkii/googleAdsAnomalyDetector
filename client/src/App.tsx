@@ -20,7 +20,7 @@ import { CampaignsTable } from "./components/CampaignsTable";
 import { AnomaliesSection } from "./components/AnomaliesSection";
 import { LoginPage } from "./components/LoginPage";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_URL || "https://ads-api.vkoctak.tech";
 
 export default function App() {
   const [user, setUser] = useState<{ id: string; email: string } | null | undefined>(undefined);

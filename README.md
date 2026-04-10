@@ -15,7 +15,7 @@ Edit `.env` — встав свій `GEMINI_API_KEY` і правильний `DA
 
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/adsdb"
-GEMINI_API_KEY="AIza..."
+GEMINI_API_KEY="..."
 PORT=4000
 ```
 

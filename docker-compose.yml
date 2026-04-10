@@ -16,8 +16,6 @@ services:
       FRONTEND_URL: ${FRONTEND_URL}
     ports:
       - "4000:4000"
-    networks:
-      - alitastz-network
 
   frontend:
     build:
@@ -28,12 +26,4 @@ services:
     container_name: alitastz-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
-    depends_on:
-      - backend
-    networks:
-      - alitastz-network
-
-networks:
-  alitastz-network:
-    driver: bridge
+      - "3000:80"

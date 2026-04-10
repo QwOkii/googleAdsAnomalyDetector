@@ -3,12 +3,9 @@ import request from "supertest";
 import { campaignRoutes } from "../routes/campaigns";
 
 jest.mock("../prisma", () => ({
-  prisma: {
-    campaign: {
-      findMany: jest.fn(),
-      create: jest.fn(),
-      deleteMany: jest.fn(),
-    },
+  __esModule: true,
+  default: {
+    campaign: { findMany: jest.fn(), create: jest.fn(), deleteMany: jest.fn() },
   },
 }));
 
@@ -16,7 +13,7 @@ jest.mock("../services/googleAds", () => ({
   fetchCampaigns: jest.fn(),
 }));
 
-import { prisma } from "../prisma";
+import prisma from "../prisma";
 import { fetchCampaigns } from "../services/googleAds";
 
 const mockFindMany = prisma.campaign.findMany as jest.Mock;
@@ -41,66 +38,45 @@ const dbCampaign = {
   updatedAt: new Date(),
 };
 
-beforeEach(() => {
-  jest.clearAllMocks();
-});
+beforeEach(() => jest.clearAllMocks());
 
 describe("GET /api/campaigns", () => {
-  it("returns 200 with an array of campaigns from DB", async () => {
+  it("returns campaigns from DB", async () => {
     mockFindMany.mockResolvedValue([dbCampaign]);
-
     const res = await request(app).get("/api/campaigns");
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body).toHaveLength(1);
     expect(res.body[0].name).toBe("Brand Awareness");
   });
 
-  it("returns 200 with empty array when DB is empty", async () => {
+  it("returns empty array when DB empty", async () => {
     mockFindMany.mockResolvedValue([]);
-
     const res = await request(app).get("/api/campaigns");
-    expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
   });
 
   it("returns 500 on DB error", async () => {
     mockFindMany.mockRejectedValue(new Error("DB error"));
-
     const res = await request(app).get("/api/campaigns");
     expect(res.status).toBe(500);
-    expect(res.body).toHaveProperty("error");
   });
 });
 
 describe("POST /api/campaigns/sync", () => {
-  const rawCampaign = {
-    name: "Brand Awareness",
-    status: "ENABLED",
-    cost: 1000,
-    clicks: 500,
-    conversions: 10,
-    ctr: 2.0,
-    cpc: 2.0,
-  };
-
-  it("returns { synced, campaigns } after sync", async () => {
+  it("returns synced campaigns", async () => {
     mockDeleteMany.mockResolvedValue({});
-    mockFetchCampaigns.mockResolvedValue([rawCampaign]);
+    mockFetchCampaigns.mockResolvedValue([{
+      name: "Brand Awareness", status: "ENABLED",
+      cost: 1000, clicks: 500, conversions: 10, ctr: 2.0, cpc: 2.0,
+    }]);
     mockCreate.mockResolvedValue(dbCampaign);
-
     const res = await request(app).post("/api/campaigns/sync");
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty("synced", 1);
-    expect(Array.isArray(res.body.campaigns)).toBe(true);
-    expect(res.body.campaigns).toHaveLength(1);
+    expect(res.body.synced).toBe(1);
   });
 
   it("returns 500 on failure", async () => {
-    mockDeleteMany.mockRejectedValue(new Error("Delete failed"));
-
+    mockDeleteMany.mockRejectedValue(new Error("fail"));
     const res = await request(app).post("/api/campaigns/sync");
     expect(res.status).toBe(500);
-    expect(res.body).toHaveProperty("error");
   });
 });

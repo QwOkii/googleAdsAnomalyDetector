@@ -4,6 +4,8 @@ import { getAuthUrl, getTokensFromCode } from "../services/googleAuth";
 
 export const authRoutes = Router();
 
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://ads.vkoctak.tech";
+
 authRoutes.get("/google", (_req: Request, res: Response) => {
   const url = getAuthUrl();
   res.redirect(url);
@@ -13,8 +15,7 @@ authRoutes.get("/google/callback", async (req: Request, res: Response) => {
   try {
     const code = req.query.code as string;
     if (!code) {
-      console.error("[auth/callback] No code in query");
-      res.redirect("http://localhost:5173?error=auth_failed");
+      res.redirect(`${FRONTEND_URL}?error=auth_failed`);
       return;
     }
 
@@ -30,12 +31,13 @@ authRoutes.get("/google/callback", async (req: Request, res: Response) => {
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
     });
 
-    res.redirect("http://localhost:5173");
+    res.redirect(FRONTEND_URL);
   } catch (err) {
     console.error("[auth/callback] ERROR:", err);
-    res.redirect("http://localhost:5173?error=auth_failed");
+    res.redirect(`${FRONTEND_URL}?error=auth_failed`);
   }
 });
 

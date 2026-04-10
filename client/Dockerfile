@@ -3,15 +3,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json ./
+RUN npm install --legacy-peer-deps
 
 COPY . .
 
-# VITE_API_URL передається як build arg
-ARG VITE_API_URL=http://localhost:4000
+ARG VITE_API_URL=https://ads-api.vkoctak.tech
 ENV VITE_API_URL=$VITE_API_URL
 
+# CI=false prevents treating warnings as errors
+ENV CI=false
 RUN npm run build
 
 # --- Production stage ---

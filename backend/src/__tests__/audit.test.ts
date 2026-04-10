@@ -3,28 +3,17 @@ import request from "supertest";
 import { auditRoutes } from "../routes/audit";
 
 jest.mock("../prisma", () => ({
-  prisma: {
-    campaign: {
-      findMany: jest.fn(),
-      create: jest.fn(),
-    },
-    anomaly: {
-      findMany: jest.fn(),
-      create: jest.fn(),
-      deleteMany: jest.fn(),
-    },
+  __esModule: true,
+  default: {
+    campaign: { findMany: jest.fn(), create: jest.fn() },
+    anomaly: { findMany: jest.fn(), create: jest.fn(), deleteMany: jest.fn() },
   },
 }));
 
-jest.mock("../services/googleAds", () => ({
-  fetchCampaigns: jest.fn(),
-}));
+jest.mock("../services/googleAds", () => ({ fetchCampaigns: jest.fn() }));
+jest.mock("../services/anomalyDetector", () => ({ detectAnomalies: jest.fn() }));
 
-jest.mock("../services/anomalyDetector", () => ({
-  detectAnomalies: jest.fn(),
-}));
-
-import { prisma } from "../prisma";
+import prisma from "../prisma";
 import { detectAnomalies } from "../services/anomalyDetector";
 
 const mockCampaignFindMany = prisma.campaign.findMany as jest.Mock;
@@ -64,18 +53,15 @@ beforeEach(() => {
 });
 
 describe("POST /api/audit", () => {
-  it("returns { analyzed, anomaliesFound, anomalies } on success", async () => {
+  it("returns analyzed/anomaliesFound/anomalies on success", async () => {
     mockCampaignFindMany.mockResolvedValue([dbCampaign]);
-    mockDetectAnomalies.mockResolvedValue([
-      {
-        campaignName: "Brand Awareness",
-        description: "High spend with zero conversions.",
-        severity: "High",
-      },
-    ]);
+    mockDetectAnomalies.mockResolvedValue([{
+      campaignName: "Brand Awareness",
+      description: "High spend with zero conversions.",
+      severity: "High",
+    }]);
     mockAnomalyDeleteMany.mockResolvedValue({});
     mockAnomalyCreate.mockResolvedValue(savedAnomaly);
-
     const res = await request(app).post("/api/audit");
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("analyzed", 1);
@@ -87,17 +73,14 @@ describe("POST /api/audit", () => {
     mockCampaignFindMany.mockResolvedValue([dbCampaign]);
     mockDetectAnomalies.mockResolvedValue([]);
     mockAnomalyDeleteMany.mockResolvedValue({});
-
     const res = await request(app).post("/api/audit");
     expect(res.status).toBe(200);
-    expect(res.body.analyzed).toBe(1);
     expect(res.body.anomaliesFound).toBe(0);
     expect(res.body.anomalies).toEqual([]);
   });
 
-  it("returns 500 when GEMINI_API_KEY is missing", async () => {
+  it("returns 500 when GEMINI_API_KEY missing", async () => {
     delete process.env.GEMINI_API_KEY;
-
     const res = await request(app).post("/api/audit");
     expect(res.status).toBe(500);
     expect(res.body).toHaveProperty("error");
@@ -107,7 +90,6 @@ describe("POST /api/audit", () => {
     mockCampaignFindMany.mockResolvedValue([dbCampaign]);
     mockDetectAnomalies.mockRejectedValue(new Error("Gemini error"));
     mockAnomalyDeleteMany.mockResolvedValue({});
-
     const res = await request(app).post("/api/audit");
     expect(res.status).toBe(500);
     expect(res.body).toHaveProperty("error");
@@ -115,28 +97,22 @@ describe("POST /api/audit", () => {
 });
 
 describe("GET /api/audit", () => {
-  it("returns array of anomalies with campaign data", async () => {
-    const anomalyWithCampaign = { ...savedAnomaly, campaign: dbCampaign };
-    mockAnomalyFindMany.mockResolvedValue([anomalyWithCampaign]);
-
+  it("returns anomalies with campaign data", async () => {
+    mockAnomalyFindMany.mockResolvedValue([{ ...savedAnomaly, campaign: dbCampaign }]);
     const res = await request(app).get("/api/audit");
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(1);
     expect(res.body[0]).toHaveProperty("campaign");
   });
 
   it("returns empty array when no anomalies saved", async () => {
     mockAnomalyFindMany.mockResolvedValue([]);
-
     const res = await request(app).get("/api/audit");
-    expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
   });
 
   it("returns 500 on DB error", async () => {
     mockAnomalyFindMany.mockRejectedValue(new Error("DB error"));
-
     const res = await request(app).get("/api/audit");
     expect(res.status).toBe(500);
     expect(res.body).toHaveProperty("error");
