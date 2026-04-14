@@ -9,7 +9,7 @@ datasource db {
 
 model Campaign {
   id          String    @id @default(cuid())
-  name        String    @unique
+  name        String
   status      String
   cost        Float
   clicks      Int

@@ -4,7 +4,6 @@ import { fetchCampaigns } from "../services/googleAds";
 
 export const campaignRoutes = Router();
 
-// GET /api/campaigns
 campaignRoutes.get("/", async (_req, res) => {
   try {
     const existing = await prisma.campaign.findMany({
@@ -18,27 +17,31 @@ campaignRoutes.get("/", async (_req, res) => {
   }
 });
 
-// POST /api/campaigns/sync
 campaignRoutes.post("/sync", async (req, res) => {
   try {
     const raw = await fetchCampaigns(req.userId);
 
     const saved = await Promise.all(
-      raw.map((c) =>
-        prisma.campaign.upsert({
-          where: { name: c.name },
-          update: {
-            status: c.status,
-            cost: c.cost,
-            clicks: c.clicks,
-            conversions: c.conversions,
-            impressions: c.impressions,
-            ctr: c.ctr,
-            cpc: c.cpc,
-            dateFrom: c.dateFrom,
-            dateTo: c.dateTo,
-          },
-          create: {
+      raw.map(async (c) => {
+        const existing = await prisma.campaign.findFirst({ where: { name: c.name } });
+        if (existing) {
+          return prisma.campaign.update({
+            where: { id: existing.id },
+            data: {
+              status: c.status,
+              cost: c.cost,
+              clicks: c.clicks,
+              conversions: c.conversions,
+              impressions: c.impressions,
+              ctr: c.ctr,
+              cpc: c.cpc,
+              dateFrom: c.dateFrom,
+              dateTo: c.dateTo,
+            },
+          });
+        }
+        return prisma.campaign.create({
+          data: {
             name: c.name,
             status: c.status,
             cost: c.cost,
@@ -50,8 +53,8 @@ campaignRoutes.post("/sync", async (req, res) => {
             dateFrom: c.dateFrom,
             dateTo: c.dateTo,
           },
-        })
-      )
+        });
+      })
     );
 
     return res.json({ synced: saved.length, campaigns: saved });

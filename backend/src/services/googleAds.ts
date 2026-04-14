@@ -96,7 +96,7 @@ export async function fetchCampaigns(userId?: string): Promise<CampaignData[]> {
       return fetchMockCampaigns(dateFrom, dateTo);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     const results = data.results ?? [];
 
     if (results.length === 0) {

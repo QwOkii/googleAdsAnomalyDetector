@@ -1,46 +1,68 @@
 import { Router } from "express";
-import type { Campaign } from "@prisma/client";
 import prisma from "../prisma";
 import { fetchCampaigns } from "../services/googleAds";
 import { detectAnomalies } from "../services/anomalyDetector";
 
 export const auditRoutes = Router();
 
-auditRoutes.post("/", async (_req, res) => {
+auditRoutes.post("/", async (req, res) => {
   if (!process.env.GEMINI_API_KEY) {
     return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
   }
 
   try {
-    let campaigns: Campaign[] = await prisma.campaign.findMany();
+    let campaigns = await prisma.campaign.findMany();
 
     if (campaigns.length === 0) {
       const raw = await fetchCampaigns(req.userId);
       campaigns = await Promise.all(
-        raw.map((c) =>
-          prisma.campaign.create({
+        raw.map(async (c) => {
+          const existing = await prisma.campaign.findFirst({ where: { name: c.name } });
+          if (existing) {
+            return prisma.campaign.update({
+              where: { id: existing.id },
+              data: {
+                status: c.status,
+                cost: c.cost,
+                clicks: c.clicks,
+                conversions: c.conversions,
+                impressions: c.impressions,
+                ctr: c.ctr,
+                cpc: c.cpc,
+                dateFrom: c.dateFrom,
+                dateTo: c.dateTo,
+              },
+            });
+          }
+          return prisma.campaign.create({
             data: {
               name: c.name,
               status: c.status,
               cost: c.cost,
               clicks: c.clicks,
               conversions: c.conversions,
+              impressions: c.impressions,
               ctr: c.ctr,
               cpc: c.cpc,
+              dateFrom: c.dateFrom,
+              dateTo: c.dateTo,
             },
-          })
-        )
+          });
+        })
       );
     }
 
-    const campaignPayload = campaigns.map((c: Campaign) => ({
+    const campaignPayload = campaigns.map((c) => ({
       name: c.name,
       status: c.status,
       cost: c.cost,
       clicks: c.clicks,
       conversions: c.conversions,
+      impressions: c.impressions,
       ctr: c.ctr,
       cpc: c.cpc,
+      dateFrom: c.dateFrom ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      dateTo: c.dateTo ?? new Date(),
     }));
 
     const anomalies = await detectAnomalies(campaignPayload);
@@ -49,9 +71,8 @@ auditRoutes.post("/", async (_req, res) => {
 
     const saved = await Promise.all(
       anomalies.map(async (a) => {
-        const campaign = campaigns.find((c: Campaign) => c.name === a.campaignName);
+        const campaign = campaigns.find((c) => c.name === a.campaignName);
         if (!campaign) return null;
-
         return prisma.anomaly.create({
           data: {
             campaignId: campaign.id,
@@ -84,7 +105,6 @@ auditRoutes.get("/", async (_req, res) => {
         { createdAt: "desc" },
       ],
     });
-
     return res.json(anomalies);
   } catch (err) {
     console.error(err);

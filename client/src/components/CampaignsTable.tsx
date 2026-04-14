@@ -152,7 +152,7 @@ export function CampaignsTable({ campaigns, loading }: Props) {
     return [
       <Box key={c.id}>
         <Button variant="plain" onClick={() => setSelected(c)}>
-          <Text as="span" fontWeight="semibold">{c.name}</Text>
+          {c.name}
         </Button>
       </Box>,
       statusBadge(c.status),

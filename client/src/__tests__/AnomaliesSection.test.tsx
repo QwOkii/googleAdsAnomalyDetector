@@ -23,8 +23,11 @@ function makeAnomaly(
       cost: 100,
       clicks: 500,
       conversions: 10,
+      impressions: 2000,
       ctr: 2.0,
       cpc: 0.2,
+      dateFrom: '2026-01-01T00:00:00Z',
+      dateTo: '2026-01-31T00:00:00Z',
       createdAt: '2026-01-01T00:00:00Z',
     },
   };
@@ -48,9 +51,7 @@ describe('AnomaliesSection', () => {
 
   it('renders a High severity anomaly card with red border style', () => {
     renderSection([makeAnomaly('1', 'High', 'Alpha Campaign')]);
-    // Find the heading element, then walk up to the styled card div
     const heading = screen.getByText('Alpha Campaign');
-    // The AnomalyCard div is an ancestor with the inline border style
     let el: HTMLElement | null = heading.parentElement;
     while (el && !el.style.border) {
       el = el.parentElement;
@@ -66,25 +67,20 @@ describe('AnomaliesSection', () => {
       makeAnomaly('1', 'High', 'High Campaign'),
     ];
     renderSection(anomalies);
-
     const badges = screen.getAllByText(/^(High|Low)$/);
     expect(badges[0]).toHaveTextContent('High');
     expect(badges[1]).toHaveTextContent('Low');
   });
 
-  it('renders High before non-High anomalies (component keeps High-first order)', () => {
-    // Component sorts: High first, then remaining in original order
-    // Input order: Low, High, Medium → rendered order: High, Low, Medium
+  it('renders High before non-High anomalies', () => {
     const anomalies = [
       makeAnomaly('3', 'Low', 'Low Camp'),
       makeAnomaly('1', 'High', 'High Camp'),
       makeAnomaly('2', 'Medium', 'Med Camp'),
     ];
     renderSection(anomalies);
-
     const badges = screen.getAllByText(/^(High|Medium|Low)$/);
     expect(badges[0]).toHaveTextContent('High');
-    // Low and Medium follow in their original (non-High) order
     expect(badges[1]).toHaveTextContent('Low');
     expect(badges[2]).toHaveTextContent('Medium');
   });
