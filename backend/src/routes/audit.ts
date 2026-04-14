@@ -97,10 +97,18 @@ auditRoutes.post("/", async (req, res) => {
     const result = saved.filter(Boolean);
     const dataSource = campaigns[0]?.dataSource ?? "mock";
 
+    // Fetch saved anomalies with campaign included so frontend gets full objects
+    const savedIds = result.map((a) => a!.id);
+    const fullAnomalies = await prisma.anomaly.findMany({
+      where: { id: { in: savedIds } },
+      include: { campaign: true },
+      orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
+    });
+
     return res.json({
       analyzed: campaigns.length,
-      anomaliesFound: result.length,
-      anomalies: result,
+      anomaliesFound: fullAnomalies.length,
+      anomalies: fullAnomalies,
       dataSource,
     });
   } catch (err) {
