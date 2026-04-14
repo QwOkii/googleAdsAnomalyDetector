@@ -9,13 +9,16 @@ datasource db {
 
 model Campaign {
   id          String    @id @default(cuid())
-  name        String
+  name        String    @unique
   status      String
   cost        Float
   clicks      Int
   conversions Int
+  impressions Int       @default(0)
   ctr         Float
   cpc         Float
+  dateFrom    DateTime?
+  dateTo      DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   anomalies   Anomaly[]

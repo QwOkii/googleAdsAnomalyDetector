@@ -15,7 +15,7 @@ auditRoutes.post("/", async (_req, res) => {
     let campaigns: Campaign[] = await prisma.campaign.findMany();
 
     if (campaigns.length === 0) {
-      const raw = await fetchCampaigns();
+      const raw = await fetchCampaigns(req.userId);
       campaigns = await Promise.all(
         raw.map((c) =>
           prisma.campaign.create({

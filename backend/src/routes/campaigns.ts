@@ -4,37 +4,51 @@ import { fetchCampaigns } from "../services/googleAds";
 
 export const campaignRoutes = Router();
 
-// GET /api/campaigns — повертає кампанії з БД, якщо є; якщо ні — тягне і зберігає
+// GET /api/campaigns
 campaignRoutes.get("/", async (_req, res) => {
   try {
     const existing = await prisma.campaign.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { cost: "desc" },
+      include: { anomalies: true },
     });
-
     return res.json(existing);
   } catch (err) {
-    console.error(err);
+    console.error("[campaigns] GET error:", err);
     return res.status(500).json({ error: "Failed to fetch campaigns" });
   }
 });
 
-// POST /api/campaigns/sync — примусово синхронізувати з Google Ads
-campaignRoutes.post("/sync", async (_req, res) => {
+// POST /api/campaigns/sync
+campaignRoutes.post("/sync", async (req, res) => {
   try {
-    await prisma.campaign.deleteMany();
-    const raw = await fetchCampaigns();
+    const raw = await fetchCampaigns(req.userId);
 
     const saved = await Promise.all(
       raw.map((c) =>
-        prisma.campaign.create({
-          data: {
+        prisma.campaign.upsert({
+          where: { name: c.name },
+          update: {
+            status: c.status,
+            cost: c.cost,
+            clicks: c.clicks,
+            conversions: c.conversions,
+            impressions: c.impressions,
+            ctr: c.ctr,
+            cpc: c.cpc,
+            dateFrom: c.dateFrom,
+            dateTo: c.dateTo,
+          },
+          create: {
             name: c.name,
             status: c.status,
             cost: c.cost,
             clicks: c.clicks,
             conversions: c.conversions,
+            impressions: c.impressions,
             ctr: c.ctr,
             cpc: c.cpc,
+            dateFrom: c.dateFrom,
+            dateTo: c.dateTo,
           },
         })
       )
@@ -42,7 +56,7 @@ campaignRoutes.post("/sync", async (_req, res) => {
 
     return res.json({ synced: saved.length, campaigns: saved });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Sync failed" });
+    console.error("[campaigns] SYNC error:", err);
+    return res.status(500).json({ error: "Sync failed", detail: String(err) });
   }
 });

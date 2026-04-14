@@ -27,9 +27,13 @@ export interface Campaign {
   cost: number;
   clicks: number;
   conversions: number;
+  impressions: number;
   ctr: number;
   cpc: number;
+  dateFrom: string | null;
+  dateTo: string | null;
   createdAt: string;
+  anomalies?: Anomaly[];
 }
 
 export interface Anomaly {

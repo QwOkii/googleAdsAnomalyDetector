@@ -1,3 +1,4 @@
+require("dotenv").config({ path: __dirname + "/.env" });
 const { defineConfig } = require("prisma/config");
 
 module.exports = defineConfig({

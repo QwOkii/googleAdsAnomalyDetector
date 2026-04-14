@@ -1,6 +1,8 @@
 import { AppProvider, Page, Card, BlockStack, Text, Button, Banner } from "@shopify/polaris";
 import enTranslations from "@shopify/polaris/locales/en.json";
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+
 export function LoginPage() {
   const params = new URLSearchParams(window.location.search);
   const authFailed = params.get("error") === "auth_failed";
@@ -30,7 +32,7 @@ export function LoginPage() {
                 <Text as="p" variant="bodyMd" tone="subdued">
                   Sign in with Google to analyze your campaigns for anomalies.
                 </Text>
-                <Button variant="primary" url="https://ads-api.vkoctak.tech/auth/google">
+                <Button variant="primary" url={`${API_BASE}/auth/google`}>
                   Connect Google Ads
                 </Button>
               </BlockStack>

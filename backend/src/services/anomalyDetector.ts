@@ -42,7 +42,6 @@ export async function detectAnomalies(
   });
 
   const userMessage = JSON.stringify(campaigns, null, 2);
-
   const result = await model.generateContent(userMessage);
   const text = result.response.text();
 
