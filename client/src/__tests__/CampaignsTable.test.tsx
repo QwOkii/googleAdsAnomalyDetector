@@ -18,6 +18,7 @@ const mockCampaigns: Campaign[] = [
     cpc: 0.8,
     dateFrom: '2026-01-01T00:00:00Z',
     dateTo: '2026-01-31T00:00:00Z',
+    dataSource: 'mock' as const,
     createdAt: '2026-01-01T00:00:00Z',
   },
   {
@@ -32,6 +33,7 @@ const mockCampaigns: Campaign[] = [
     cpc: 0.6,
     dateFrom: '2026-01-01T00:00:00Z',
     dateTo: '2026-01-31T00:00:00Z',
+    dataSource: 'mock' as const,
     createdAt: '2026-01-02T00:00:00Z',
   },
 ];

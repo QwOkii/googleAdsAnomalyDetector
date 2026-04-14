@@ -11,13 +11,17 @@ auditRoutes.post("/", async (req, res) => {
   }
 
   try {
-    let campaigns = await prisma.campaign.findMany();
+    let campaigns = await prisma.campaign.findMany({
+      where: { userId: req.userId },
+    });
 
     if (campaigns.length === 0) {
       const raw = await fetchCampaigns(req.userId);
       campaigns = await Promise.all(
         raw.map(async (c) => {
-          const existing = await prisma.campaign.findFirst({ where: { name: c.name } });
+          const existing = await prisma.campaign.findFirst({
+            where: { name: c.name, userId: req.userId },
+          });
           if (existing) {
             return prisma.campaign.update({
               where: { id: existing.id },
@@ -31,11 +35,13 @@ auditRoutes.post("/", async (req, res) => {
                 cpc: c.cpc,
                 dateFrom: c.dateFrom,
                 dateTo: c.dateTo,
+                dataSource: c.dataSource,
               },
             });
           }
           return prisma.campaign.create({
             data: {
+              userId: req.userId!,
               name: c.name,
               status: c.status,
               cost: c.cost,
@@ -46,6 +52,7 @@ auditRoutes.post("/", async (req, res) => {
               cpc: c.cpc,
               dateFrom: c.dateFrom,
               dateTo: c.dateTo,
+              dataSource: c.dataSource,
             },
           });
         })
@@ -63,11 +70,14 @@ auditRoutes.post("/", async (req, res) => {
       cpc: c.cpc,
       dateFrom: c.dateFrom ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       dateTo: c.dateTo ?? new Date(),
+      dataSource: (c.dataSource as "api" | "mock"),
     }));
 
     const anomalies = await detectAnomalies(campaignPayload);
 
-    await prisma.anomaly.deleteMany();
+    await prisma.anomaly.deleteMany({
+      where: { campaign: { userId: req.userId } },
+    });
 
     const saved = await Promise.all(
       anomalies.map(async (a) => {
@@ -77,6 +87,7 @@ auditRoutes.post("/", async (req, res) => {
           data: {
             campaignId: campaign.id,
             description: a.description,
+            recommendation: a.recommendation ?? "",
             severity: a.severity,
           },
         });
@@ -84,11 +95,13 @@ auditRoutes.post("/", async (req, res) => {
     );
 
     const result = saved.filter(Boolean);
+    const dataSource = campaigns[0]?.dataSource ?? "mock";
 
     return res.json({
       analyzed: campaigns.length,
       anomaliesFound: result.length,
       anomalies: result,
+      dataSource,
     });
   } catch (err) {
     console.error(err);
@@ -96,14 +109,12 @@ auditRoutes.post("/", async (req, res) => {
   }
 });
 
-auditRoutes.get("/", async (_req, res) => {
+auditRoutes.get("/", async (req, res) => {
   try {
     const anomalies = await prisma.anomaly.findMany({
+      where: { campaign: { userId: req.userId } },
       include: { campaign: true },
-      orderBy: [
-        { severity: "desc" },
-        { createdAt: "desc" },
-      ],
+      orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
     });
     return res.json(anomalies);
   } catch (err) {

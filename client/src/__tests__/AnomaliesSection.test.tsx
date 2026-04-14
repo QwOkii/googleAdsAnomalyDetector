@@ -14,6 +14,7 @@ function makeAnomaly(
     id,
     campaignId: id,
     description: `Issue with ${name}`,
+    recommendation: `Fix the issue with ${name}`,
     severity,
     createdAt: '2026-01-01T00:00:00Z',
     campaign: {
@@ -28,6 +29,7 @@ function makeAnomaly(
       cpc: 0.2,
       dateFrom: '2026-01-01T00:00:00Z',
       dateTo: '2026-01-31T00:00:00Z',
+      dataSource: 'mock' as const,
       createdAt: '2026-01-01T00:00:00Z',
     },
   };

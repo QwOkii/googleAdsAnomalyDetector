@@ -1,9 +1,3 @@
-/**
- * Google Ads Service
- * Використовує реальний Google Ads API через REST (REST API v19).
- * Авторизація: OAuth2 access token юзера (зберігається в БД після Google Login).
- */
-
 import prisma from "../prisma";
 import { refreshAccessToken } from "./googleAuth";
 
@@ -18,13 +12,14 @@ export interface CampaignData {
   cpc: number;
   dateFrom: Date;
   dateTo: Date;
+  dataSource: "api" | "mock";
 }
 
 const GOOGLE_ADS_API_VERSION = "v19";
 const DEVELOPER_TOKEN = process.env.DEV_TOKEN!;
 const CUSTOMER_ID = process.env.CUSTOMER_ID!;
 
-function getDateRange(): { dateFrom: Date; dateTo: Date; fromStr: string; toStr: string } {
+function getDateRange() {
   const dateTo = new Date();
   const dateFrom = new Date();
   dateFrom.setDate(dateFrom.getDate() - 30);
@@ -54,27 +49,25 @@ function buildQuery(fromStr: string, toStr: string): string {
 
 export async function fetchCampaigns(userId?: string): Promise<CampaignData[]> {
   const { dateFrom, dateTo, fromStr, toStr } = getDateRange();
-  let accessToken: string | null = null;
 
-  if (userId) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user) {
-      try {
-        accessToken = await refreshAccessToken(user.refreshToken);
-        await prisma.user.update({
-          where: { id: userId },
-          data: { accessToken },
-        });
-      } catch {
-        console.warn("[googleAds] Failed to refresh token, using stored access token");
-        accessToken = user.accessToken;
-      }
-    }
+  if (!userId) {
+    console.warn("[googleAds] No userId — returning mock data");
+    return fetchMockCampaigns(dateFrom, dateTo);
   }
 
-  if (!accessToken) {
-    console.warn("[googleAds] No access token available, using mock data");
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    console.warn("[googleAds] User not found — returning mock data");
     return fetchMockCampaigns(dateFrom, dateTo);
+  }
+
+  let accessToken = user.accessToken;
+
+  try {
+    accessToken = await refreshAccessToken(user.refreshToken);
+    await prisma.user.update({ where: { id: userId }, data: { accessToken } });
+  } catch {
+    console.warn("[googleAds] Token refresh failed, using stored token");
   }
 
   try {
@@ -100,7 +93,7 @@ export async function fetchCampaigns(userId?: string): Promise<CampaignData[]> {
     const results = data.results ?? [];
 
     if (results.length === 0) {
-      console.warn("[googleAds] No campaigns returned from API, using mock data");
+      console.warn("[googleAds] No campaigns from API — using mock data");
       return fetchMockCampaigns(dateFrom, dateTo);
     }
 
@@ -115,6 +108,7 @@ export async function fetchCampaigns(userId?: string): Promise<CampaignData[]> {
       cpc: (row.metrics?.averageCpc ?? 0) / 1_000_000,
       dateFrom,
       dateTo,
+      dataSource: "api" as const,
     }));
   } catch (err) {
     console.error("[googleAds] Fetch failed:", err);
@@ -124,12 +118,12 @@ export async function fetchCampaigns(userId?: string): Promise<CampaignData[]> {
 
 function fetchMockCampaigns(dateFrom: Date, dateTo: Date): CampaignData[] {
   return [
-    { name: "Health Campaign", status: "ENABLED", cost: 156.59, clicks: 199, conversions: 142, impressions: 2540, ctr: 7.84, cpc: 0.79, dateFrom, dateTo },
-    { name: "Fashion Campaign", status: "ENABLED", cost: 162.34, clicks: 205, conversions: 144, impressions: 2513, ctr: 8.16, cpc: 0.79, dateFrom, dateTo },
-    { name: "Electronics Campaign", status: "ENABLED", cost: 159.15, clicks: 199, conversions: 148, impressions: 2613, ctr: 7.62, cpc: 0.80, dateFrom, dateTo },
-    { name: "Travel Campaign", status: "ENABLED", cost: 158.84, clicks: 205, conversions: 145, impressions: 2604, ctr: 7.87, cpc: 0.77, dateFrom, dateTo },
-    { name: "Automotive Campaign", status: "ENABLED", cost: 1530.0, clicks: 192, conversions: 0, impressions: 50526, ctr: 0.38, cpc: 7.97, dateFrom, dateTo },
-    { name: "Electronics Retargeting", status: "PAUSED", cost: 610.0, clicks: 40, conversions: 2, impressions: 9302, ctr: 0.43, cpc: 15.25, dateFrom, dateTo },
-    { name: "Fashion - Competitor Keywords", status: "ENABLED", cost: 1850.0, clicks: 88, conversions: 3, impressions: 7333, ctr: 1.2, cpc: 21.02, dateFrom, dateTo },
+    { name: "Health Campaign", status: "ENABLED", cost: 156.59, clicks: 199, conversions: 142, impressions: 2540, ctr: 7.84, cpc: 0.79, dateFrom, dateTo, dataSource: "mock" },
+    { name: "Fashion Campaign", status: "ENABLED", cost: 162.34, clicks: 205, conversions: 144, impressions: 2513, ctr: 8.16, cpc: 0.79, dateFrom, dateTo, dataSource: "mock" },
+    { name: "Electronics Campaign", status: "ENABLED", cost: 159.15, clicks: 199, conversions: 148, impressions: 2613, ctr: 7.62, cpc: 0.80, dateFrom, dateTo, dataSource: "mock" },
+    { name: "Travel Campaign", status: "ENABLED", cost: 158.84, clicks: 205, conversions: 145, impressions: 2604, ctr: 7.87, cpc: 0.77, dateFrom, dateTo, dataSource: "mock" },
+    { name: "Automotive Campaign", status: "ENABLED", cost: 1530.0, clicks: 192, conversions: 0, impressions: 50526, ctr: 0.38, cpc: 7.97, dateFrom, dateTo, dataSource: "mock" },
+    { name: "Electronics Retargeting", status: "PAUSED", cost: 610.0, clicks: 40, conversions: 2, impressions: 9302, ctr: 0.43, cpc: 15.25, dateFrom, dateTo, dataSource: "mock" },
+    { name: "Fashion - Competitor Keywords", status: "ENABLED", cost: 1850.0, clicks: 88, conversions: 3, impressions: 7333, ctr: 1.2, cpc: 21.02, dateFrom, dateTo, dataSource: "mock" },
   ];
 }

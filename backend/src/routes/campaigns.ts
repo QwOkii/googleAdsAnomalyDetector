@@ -4,13 +4,14 @@ import { fetchCampaigns } from "../services/googleAds";
 
 export const campaignRoutes = Router();
 
-campaignRoutes.get("/", async (_req, res) => {
+campaignRoutes.get("/", async (req, res) => {
   try {
-    const existing = await prisma.campaign.findMany({
+    const campaigns = await prisma.campaign.findMany({
+      where: { userId: req.userId },
       orderBy: { cost: "desc" },
       include: { anomalies: true },
     });
-    return res.json(existing);
+    return res.json(campaigns);
   } catch (err) {
     console.error("[campaigns] GET error:", err);
     return res.status(500).json({ error: "Failed to fetch campaigns" });
@@ -23,7 +24,9 @@ campaignRoutes.post("/sync", async (req, res) => {
 
     const saved = await Promise.all(
       raw.map(async (c) => {
-        const existing = await prisma.campaign.findFirst({ where: { name: c.name } });
+        const existing = await prisma.campaign.findFirst({
+          where: { name: c.name, userId: req.userId },
+        });
         if (existing) {
           return prisma.campaign.update({
             where: { id: existing.id },
@@ -37,11 +40,13 @@ campaignRoutes.post("/sync", async (req, res) => {
               cpc: c.cpc,
               dateFrom: c.dateFrom,
               dateTo: c.dateTo,
+              dataSource: c.dataSource,
             },
           });
         }
         return prisma.campaign.create({
           data: {
+            userId: req.userId!,
             name: c.name,
             status: c.status,
             cost: c.cost,
@@ -52,12 +57,14 @@ campaignRoutes.post("/sync", async (req, res) => {
             cpc: c.cpc,
             dateFrom: c.dateFrom,
             dateTo: c.dateTo,
+            dataSource: c.dataSource,
           },
         });
       })
     );
 
-    return res.json({ synced: saved.length, campaigns: saved });
+    const dataSource = raw[0]?.dataSource ?? "mock";
+    return res.json({ synced: saved.length, campaigns: saved, dataSource });
   } catch (err) {
     console.error("[campaigns] SYNC error:", err);
     return res.status(500).json({ error: "Sync failed", detail: String(err) });

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://ads-api.vkoctak.tech";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 const api = axios.create({
   baseURL: `${API_BASE}/api`,
@@ -32,6 +32,7 @@ export interface Campaign {
   cpc: number;
   dateFrom: string | null;
   dateTo: string | null;
+  dataSource: "api" | "mock";
   createdAt: string;
   anomalies?: Anomaly[];
 }
@@ -40,6 +41,7 @@ export interface Anomaly {
   id: string;
   campaignId: string;
   description: string;
+  recommendation: string;
   severity: "Low" | "Medium" | "High";
   createdAt: string;
   campaign: Campaign;
@@ -49,6 +51,13 @@ export interface AuditResult {
   analyzed: number;
   anomaliesFound: number;
   anomalies: Anomaly[];
+  dataSource: "api" | "mock";
+}
+
+export interface SyncResult {
+  synced: number;
+  campaigns: Campaign[];
+  dataSource: "api" | "mock";
 }
 
 export const getCampaigns = () =>
@@ -61,7 +70,7 @@ export const runAudit = () =>
   api.post<AuditResult>("/audit").then((r) => r.data);
 
 export const syncCampaigns = () =>
-  api.post("/campaigns/sync").then((r) => r.data);
+  api.post<SyncResult>("/campaigns/sync").then((r) => r.data);
 
 export const getMe = () =>
   axios
