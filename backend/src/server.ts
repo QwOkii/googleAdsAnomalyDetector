@@ -43,7 +43,7 @@ app.get("/api/debug/ads", requireAuth, async (req: any, res) => {
     const CUSTOMER_ID = process.env.CUSTOMER_ID!;
     const DEV_TOKEN = process.env.DEV_TOKEN!;
 
-    const url = `https://googleads.googleapis.com/v19/customers/${CUSTOMER_ID}/googleAds:search`;
+    const url = `https://googleads.googleapis.com/v18/customers/${CUSTOMER_ID}/googleAds:search`;
     const response = await fetch(url, {
       method: "POST",
       headers: {

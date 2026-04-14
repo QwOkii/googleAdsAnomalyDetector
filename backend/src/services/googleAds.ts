@@ -15,7 +15,7 @@ export interface CampaignData {
   dataSource: "api" | "mock";
 }
 
-const GOOGLE_ADS_API_VERSION = "v19";
+const GOOGLE_ADS_API_VERSION = "v18";
 const DEVELOPER_TOKEN = process.env.DEV_TOKEN!;
 const CUSTOMER_ID = process.env.CUSTOMER_ID!;
 
