@@ -26,6 +26,50 @@ app.use("/auth", authRoutes);
 app.use("/api/campaigns", requireAuth, campaignRoutes);
 app.use("/api/audit", requireAuth, auditRoutes);
 
+// Debug endpoint — shows raw Google Ads API response
+app.get("/api/debug/ads", requireAuth, async (req: any, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const { refreshAccessToken } = await import("./services/googleAuth");
+    let accessToken = user.accessToken;
+    try {
+      accessToken = await refreshAccessToken(user.refreshToken);
+    } catch (e) {
+      return res.json({ warning: "Token refresh failed", error: String(e), accessToken: accessToken ? "exists" : "missing" });
+    }
+
+    const CUSTOMER_ID = process.env.CUSTOMER_ID!;
+    const DEV_TOKEN = process.env.DEV_TOKEN!;
+
+    const url = `https://googleads.googleapis.com/v19/customers/${CUSTOMER_ID}/googleAds:search`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "developer-token": DEV_TOKEN,
+      },
+      body: JSON.stringify({
+        query: `SELECT campaign.name, campaign.status, metrics.cost_micros, metrics.clicks FROM campaign WHERE campaign.status != 'REMOVED' LIMIT 5`,
+      }),
+    });
+
+    const text = await response.text();
+    return res.json({
+      status: response.status,
+      ok: response.ok,
+      customerId: CUSTOMER_ID,
+      devTokenPresent: !!DEV_TOKEN,
+      accessTokenPresent: !!accessToken,
+      body: text,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: String(err) });
+  }
+});
+
 app.get("/api/health", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
